@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Leaflet Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.0.3/dist/leaflet.css"/>
+    <style>
+
+html { height:100%;}
+
+body {
+    height:100%;
+    padding: 0;
+    margin: 0;
+}
+
+#map {
+	width: 100%;
+	margin: 0 auto;
+	height: 95%;
+}
+
+#header {
+	margin-top: 0px;
+	margin-bottom: 0px;
+}
+
+
+.info {
+    z-index: 1000;
+    position: absolute;
+    right: 40%;
+    top: 5%;
+    padding: 6px 8px;
+    font: 14px Arial, Helvetica, sans-serif;
+    text-align: center;
+    background: white;
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+}
+
+.info h1 {
+    font-size: 16px;
+    margin: 0 0 5px;
+    color: #777777;
+}
+
+
+.legend {
+    line-height: 18px;
+    color: #333333;
+    font-family: 'Open Sans', Helvetica, sans-serif;
+    padding: 6px 8px;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+
+.legend i {
+    width: 28px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+}
+
+
+.legend p {
+    font-size: 12px;
+    line-height: 18px;
+    margin: 0;
+}
+
+    </style>
+
+
+</head>
+<body>
+    <!-- Our web map and content will go here -->
+    <script src="https://unpkg.com/leaflet@1.0.3/dist/leaflet.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <div id="map" style="width: 1000px; height: 600px">
+    </div>
+    <script>
+
+        // Create Map Object
+    	var map = L.map('map',{ center: [40.1215, -75.3399], zoom: 9 });
+		L.tileLayer('https://{s}.tile.openstreetmap.se/hydda/base/{z}/{x}/{y}.png', {
+			attribution: 'Tiles by <a href="https://mapc.org">MAPC</a>, Data by <a href="https://www.phila.gov/programs/lead-and-healthy-homes-program/">Philadelphai Open Data</a>',
+			maxZoom: 17,
+			minZoom: 9
+		}).addTo(map);
+
+        //Add Basemap Layers
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+        
+        var mbAttr = 'Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+                'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+            mbUrl = 'https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw';
+            
+        var grayscale   = L.tileLayer(mbUrl, {id: 'mapbox/light-v9', tileSize: 512, zoomOffset: -1, attribution: mbAttr}),
+            streets  = L.tileLayer(mbUrl, {id: 'mapbox/streets-v11', tileSize: 512, zoomOffset: -1, attribution: mbAttr});
+            
+        var baseMaps = {
+            "grayscale": grayscale,
+            "streets": streets
+        };
+
+        //Define Markers for major cities
+        var Pottstown = L.marker([40.2454, -75.6496]);
+        Pottstown.bindPopup("Pottstown");
+        var Doylestown = L.marker([40.3101, -75.1299]);
+        Doylestown.bindPopup("Doylestown");
+        var Westchester = L.marker([39.9607, -75.6055]);
+        Westchester.bindPopup("West Chester");
+        var Chester = L.marker([39.8496, -75.3557]);
+        Chester.bindPopup("Chester");
+		var KOP = L.marker([40.1013, -75.3836]);
+        KOP.bindPopup("King of Prussia");
+       
+        //Add major cities markers to single Layer
+            var Mcities = L.layerGroup([Pottstown, Doylestown, Westchester, Chester, KOP]);
+            var McitiesLayer = {
+            "Major Cities": Mcities
+        };
+		
+
+    	// create high growth polygon
+		var myArea1 = L.polygon([[40.2454, -75.6496], [40.1304, -75.5149], [40.1013, -75.3836],
+		    [40.2109, -75.2782], [40.3214, -75.5626]],
+		    {color: 'green', weight: 4}).addTo(map);
+		// Bind popup to area object
+		myArea1.bindPopup("High Population Growth Area");
+
+
+		// create high decline polygon
+		var myArea2 = L.polygon([[39.8193, -75.4185], [39.8901, -75.4755], [39.9737, -75.3529], [40.0793, -75.3016],
+		    [40.0170, -75.1884], [39.8729, -75.2431]],
+		    {color: 'red', weight: 4}).addTo(map);
+		// Bind popup to area object
+		myArea2.bindPopup("High Population Decline Area");
+
+		//Add population trend polygons to single Layer
+		var poptrends = L.layerGroup([myArea1, myArea2]);
+            var poptrendsLayer = {
+            "Population Trends": poptrends
+        };
+
+		// Add municipality data based on population change
+		var suburbsLayer = null;
+		$.getJSON("philadelphiasub.geojson",function(data){
+		    suburbsLayer = L.geoJson(data, {
+		    	style: styleFunc,
+		    	onEachFeature: onEachFeature
+		    }).addTo(map);
+
+            var overlayLayer = {
+                "Population change": suburbsLayer,
+                "Major Cities": Mcities,
+				"Population Trends": poptrends
+            };
+
+            L.control.layers(baseMaps, overlayLayer).addTo(map);
+		});
+		
+		
+		// Define function that fillss each municipality based on population change
+		function styleFunc(feature) {
+		    return {
+		        fillColor: setColorFunc(feature.properties.ch_pop_num),
+		        fillOpacity: 0.9,
+		        weight: 1,
+		        opacity: 1,
+		        color: '#ffffff',
+		        dashArray: '3'
+		    };
+		}
+
+		// Set function for colors of classes
+		function setColorFunc(density){
+			return density > 5000 ? '#1a9850' :
+			       density > 3000 ? '#91cf60' :
+			       density > 1500 ? '#d9ef8b' :
+                   density > 500 ? '#ffffbf' :
+                   density > 0 ? '#fee08b' :
+			       density > -1000 ? '#fc8d59' :
+			       density > -3000 ? '#d73027' :
+			                     '#BFBCBB';
+		};
+
+       
+		// Set onEachFeature option to add the listeners to the population change layer:
+		function onEachFeature(feature, layer){
+			layer.on({
+				mouseover: highlightFeature,
+				mouseout: resetHighlight,
+				click: zoomFeature
+			});
+			layer.bindPopup('Change in Population: '+feature.properties.ch_pop_num);
+		}
+		
+		// Define Mouseover highlight:
+		function highlightFeature(e){
+			var layer = e.target;
+
+			layer.setStyle({
+				weight: 5,
+				color: '#666',
+				dashArray: '',
+				fillOpacity: 0.7
+			});
+		
+            // support for different web browsers
+			if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+		        layer.bringToFront();
+		    }
+		}
+		
+		
+		// Define mouseout reset:
+		function resetHighlight(e) {
+			suburbsLayer.resetStyle(e.target);
+		}
+		
+		// Define click to zoom: 
+		function zoomFeature(e){
+			console.log(e.target.getBounds());
+			map.fitBounds(e.target.getBounds().pad(1.5));
+		}
+		
+		// Create Leaflet Control Object for Legend
+		var legend = L.control({position: 'bottomright'});
+		
+		// Function that runs when legend is added to map
+		legend.onAdd = function (map) {
+			// Create Div Element and Populate it with HTML
+			var div = L.DomUtil.create('div', 'legend');		    
+			div.innerHTML += '<b>Population Change 2000 - 2015</b><br />';
+			div.innerHTML += 'by municipality<br />';
+			div.innerHTML += '<br>';
+			div.innerHTML += '<i style="background: #1a9850"></i><p>5000+</p>';
+			div.innerHTML += '<i style="background: #91cf60"></i><p>3000-5000</p>';
+			div.innerHTML += '<i style="background: #d9ef8b"></i><p>1500-3000</p>';
+            div.innerHTML += '<i style="background: #ffffbf"></i><p>500-1500</p>';
+            div.innerHTML += '<i style="background: #fee08b"></i><p>0-500</p>';
+			div.innerHTML += '<i style="background: #fc8d59"></i><p>(-1000)-0</p>';
+            div.innerHTML += '<i style="background: #d73027"></i><p>(-3000)-(-1000)</p>';
+			div.innerHTML += '<hr>';
+			div.innerHTML += '<i style="background: #BFBCBB"></i><p>No Data</p>';
+			
+			// Return the Legend div containing the HTML content
+			return div;
+		};
+		
+        
+		// Add Legend to Map
+		legend.addTo(map);
+
+		// Add Scale Bar to Map
+		L.control.scale({position: 'bottomleft'}).addTo(map);
+
+
+	</script>
+</body>
+</html>
